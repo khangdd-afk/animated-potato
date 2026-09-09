@@ -1,0 +1,271 @@
+{
+  "name": "Discord - PayOS Onboarding",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "discord-onboarding",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook-onboarding",
+      "name": "Webhook Discord Join",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        100,
+        300
+      ],
+      "notesInFlow": true,
+      "notes": "Trigger khi có user mới join server (gọi từ Discord Bot)"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst crypto = require('crypto');\nconst checksumKey = 'YOUR_PAYOS_CHECKSUM_KEY'; // THAY THẾ BẰNG CHECKSUM KEY\nconst clientId = 'YOUR_PAYOS_CLIENT_ID'; // THAY THẾ BẰNG CLIENT ID\nconst apiKey = 'YOUR_PAYOS_API_KEY'; // THAY THẾ BẰNG API KEY\n\nconst discordUserId = $input.item.json.body.userId;\nconst amount = 50000; // 50,000 VND (PayOS dùng số tiền thực tế)\n\n// Generate orderCode as a random number <= 9007199254740991\nconst orderCode = Number(String(Date.now()).slice(-9) + Math.floor(Math.random() * 1000));\nconst description = discordUserId; // Lưu discordUserId vào description (max 25 char)\nconst returnUrl = 'http://localhost:5678/webhook/payos-ipn';\nconst cancelUrl = 'http://localhost:5678/webhook/payos-ipn';\n\n// Tạo signature\nconst signData = `amount=${amount}&cancelUrl=${cancelUrl}&description=${description}&orderCode=${orderCode}&returnUrl=${returnUrl}`;\nconst signature = crypto.createHmac('sha256', checksumKey).update(signData).digest('hex');\n\nconst body = {\n  orderCode,\n  amount,\n  description,\n  returnUrl,\n  cancelUrl,\n  signature\n};\n\nreturn {\n  json: {\n    discordUserId,\n    orderCode,\n    body,\n    headers: {\n      'x-client-id': clientId,\n      'x-api-key': apiKey,\n      'Content-Type': 'application/json'\n    }\n  }\n};\n"
+      },
+      "id": "build-vnpay-params",
+      "name": "Build PayOS Params & Sign",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        300,
+        300
+      ],
+      "notesInFlow": true,
+      "notes": "Tạo tham số PayOS và băm HMAC-SHA256 để ký bảo mật"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api-merchant.payos.vn/v2/payment-requests",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-client-id",
+              "value": "={{ $json.headers[\"x-client-id\"] }}"
+            },
+            {
+              "name": "x-api-key",
+              "value": "={{ $json.headers[\"x-api-key\"] }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {}
+      },
+      "id": "vnpay-api-call",
+      "name": "Call PayOS API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        500,
+        300
+      ],
+      "notesInFlow": true,
+      "notes": "Gọi PayOS API để tạo Payment Link"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst prevData = $('Build PayOS Params & Sign').first().json;\nconst payosData = $input.item.json.data;\n\nconst checkoutUrl = payosData.checkoutUrl;\nconst qrCode = payosData.qrCode;\nconst qrImageUrl = \"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=\" + encodeURIComponent(qrCode);\n\nreturn {\n  json: {\n    discordUserId: prevData.discordUserId,\n    orderCode: prevData.orderCode,\n    checkoutUrl: checkoutUrl,\n    qrImageUrl: qrImageUrl\n  }\n};\n"
+      },
+      "id": "parse-qr",
+      "name": "Parse PayOS Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "botToken",
+        "resource": "member",
+        "operation": "addRole",
+        "guildId": "YOUR_GUILD_ID",
+        "userId": "={{ $json.discordUserId }}",
+        "roleId": "YOUR_TEMP_ROLE_ID"
+      },
+      "id": "discord-assign-role",
+      "name": "Discord: Add Temp Role",
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 1,
+      "position": [
+        900,
+        300
+      ],
+      "notesInFlow": true,
+      "notes": "Gán role chưa xác thực cho User"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://discord.com/api/v10/users/@me/channels",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "recipient_id",
+              "value": "={{ $('Parse & Generate QR Image').item.json.discordUserId }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "discord-create-dm",
+      "name": "Create DM Channel",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://discord.com/api/v10/channels/{{ $json.id }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"content\": \"Chào bạn! Vui lòng quét mã QR PayOS dưới đây hoặc truy cập link sau để thanh toán phí gia nhập server (50.000đ).\\n**Link thanh toán:** {{ $('Parse PayOS Response').item.json.checkoutUrl }}\\nMã đơn hàng của bạn là: **{{ $('Parse PayOS Response').item.json.orderCode }}**\",\n  \"embeds\": [\n    {\n      \"image\": {\n        \"url\": \"{{ $('Parse PayOS Response').item.json.qrImageUrl }}\"\n      }\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "discord-send-dm",
+      "name": "Send DM with QR",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1300,
+        300
+      ],
+      "notesInFlow": true,
+      "notes": "Gửi tin nhắn kèm ảnh QR cho thành viên mới"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1087011655032-fitbmjndd573dqnlk47ot6idrrv07ttf.apps.googleusercontent.com",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Discord_User_ID": "={{ $('Parse & Generate QR Image').item.json.discordUserId }}",
+            "TxnRef": "={{ $('Parse PayOS Response').item.json.orderCode }}",
+            "Amount": 50000,
+            "Status": "PENDING",
+            "Date": "={{ new Date().toISOString() }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "google-sheets-append",
+      "name": "Google Sheets: Log PENDING",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1500,
+        300
+      ],
+      "notesInFlow": true,
+      "notes": "Lưu log giao dịch vào GG Sheets"
+    }
+  ],
+  "connections": {
+    "Webhook Discord Join": {
+      "main": [
+        [
+          {
+            "node": "Build PayOS Params & Sign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Discord: Add Temp Role": {
+      "main": [
+        [
+          {
+            "node": "Create DM Channel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create DM Channel": {
+      "main": [
+        [
+          {
+            "node": "Send DM with QR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send DM with QR": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets: Log PENDING",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build PayOS Params & Sign": {
+      "main": [
+        [
+          {
+            "node": "Call PayOS API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call PayOS API": {
+      "main": [
+        [
+          {
+            "node": "Parse PayOS Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse PayOS Response": {
+      "main": [
+        [
+          {
+            "node": "Discord: Add Temp Role",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "id": "discord-payos-onboarding-1788958162083"
+}

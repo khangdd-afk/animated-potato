@@ -1,0 +1,3 @@
+# Setup
+
+Hướng dẫn tạo bot trên Discord Developer Portal...

@@ -1,0 +1,240 @@
+{
+  "name": "Discord - PayOS IPN",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "payos-ipn",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-ipn",
+      "name": "Webhook IPN",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        100,
+        300
+      ],
+      "notesInFlow": true,
+      "notes": "Endpoint nhận IPN từ VNPay"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst crypto = require('crypto');\nconst checksumKey = 'YOUR_PAYOS_CHECKSUM_KEY'; // THAY THẾ BẰNG CHECKSUM KEY\n\nconst body = $input.item.json.body;\nconst reqSignature = body.signature;\nconst data = body.data;\n\nconst sortedKeys = Object.keys(data).sort();\nlet signParams = [];\nfor (let k of sortedKeys) {\n    if (data[k] !== undefined && data[k] !== null && data[k] !== \"\") {\n        signParams.push(k + \"=\" + data[k]);\n    }\n}\nconst signData = signParams.join('&');\nconst signature = crypto.createHmac('sha256', checksumKey).update(signData).digest('hex');\n\nconst isValid = (signature === reqSignature);\nconst isSuccess = (body.code === '00' && body.desc === 'success');\nconst orderCode = data.orderCode;\nconst discordUserId = data.description; // Lấy userId từ description\n\nreturn {\n  json: {\n    isValid,\n    isSuccess,\n    orderCode,\n    discordUserId\n  }\n};\n"
+      },
+      "id": "verify-hash",
+      "name": "Verify HMAC-SHA256",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        300,
+        300
+      ],
+      "notesInFlow": true,
+      "notes": "BẮT BUỘC: Xác thực chữ ký điện tử từ PayOS để chống giả mạo"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.isValid }}",
+              "value2": true
+            },
+            {
+              "value1": "={{ $json.isSuccess }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "check-valid",
+      "name": "Check Valid & Success",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true\n}",
+        "options": {}
+      },
+      "id": "webhook-response-success",
+      "name": "Webhook Response (Success)",
+      "type": "n8n-nodes-base.webhookResponse",
+      "typeVersion": 1,
+      "position": [
+        700,
+        100
+      ],
+      "notesInFlow": true,
+      "notes": "Trả về success: true cho PayOS"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": false\n}",
+        "options": {}
+      },
+      "id": "webhook-response-fail",
+      "name": "Webhook Response (Fail)",
+      "type": "n8n-nodes-base.webhookResponse",
+      "typeVersion": 1,
+      "position": [
+        700,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "botToken",
+        "resource": "member",
+        "operation": "addRole",
+        "guildId": "YOUR_GUILD_ID",
+        "userId": "={{ $json.discordUserId }}",
+        "roleId": "YOUR_VERIFIED_ROLE_ID"
+      },
+      "id": "discord-add-verified",
+      "name": "Discord: Add Verified Role",
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 1,
+      "position": [
+        900,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "botToken",
+        "resource": "member",
+        "operation": "removeRole",
+        "guildId": "YOUR_GUILD_ID",
+        "userId": "={{ $('Check Valid & Success').item.json.discordUserId }}",
+        "roleId": "YOUR_TEMP_ROLE_ID"
+      },
+      "id": "discord-remove-temp",
+      "name": "Discord: Remove Temp Role",
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 1,
+      "position": [
+        1100,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1087011655032-fitbmjndd573dqnlk47ot6idrrv07ttf.apps.googleusercontent.com",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Status": "SUCCESS"
+          }
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "TxnRef",
+              "lookupValue": "={{ $('Verify HMAC-SHA256').item.json.orderCode }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "google-sheets-update",
+      "name": "Google Sheets: Mark SUCCESS",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1300,
+        100
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook IPN": {
+      "main": [
+        [
+          {
+            "node": "Verify HMAC-SHA256",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Valid & Success": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response (Success)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Discord: Add Verified Role",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Webhook Response (Fail)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Discord: Add Verified Role": {
+      "main": [
+        [
+          {
+            "node": "Discord: Remove Temp Role",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Discord: Remove Temp Role": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets: Mark SUCCESS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify HMAC-SHA256": {
+      "main": [
+        [
+          {
+            "node": "Check Valid & Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "id": "discord-payos-ipn-1788958162095"
+}

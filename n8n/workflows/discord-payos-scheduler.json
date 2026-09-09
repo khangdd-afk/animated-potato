@@ -1,0 +1,171 @@
+{
+  "name": "Discord - PayOS Scheduler",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days"
+            }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        100,
+        300
+      ],
+      "notesInFlow": true,
+      "notes": "Chạy hằng ngày để quét nợ"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "documentId": {
+          "__rl": true,
+          "value": "1087011655032-fitbmjndd573dqnlk47ot6idrrv07ttf.apps.googleusercontent.com",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "google-sheets-get",
+      "name": "Google Sheets: Get Rows",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        300,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst rows = $input.all();\nconst result = [];\nconst now = new Date();\nfor (const item of rows) {\n  const row = item.json;\n  if (row.Status === 'PENDING') {\n    const rowDate = new Date(row.Date);\n    const diffTime = Math.abs(now - rowDate);\n    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); \n    if (diffDays > 3) { // Quá hạn 3 ngày\n      result.push({ json: row });\n    }\n  }\n}\nreturn result;\n"
+      },
+      "id": "filter-overdue",
+      "name": "Filter Overdue (3 days)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        300
+      ],
+      "notesInFlow": true,
+      "notes": "Lọc các user quá hạn thanh toán 3 ngày"
+    },
+    {
+      "parameters": {
+        "authentication": "botToken",
+        "resource": "member",
+        "operation": "remove",
+        "guildId": "YOUR_GUILD_ID",
+        "userId": "={{ $json.Discord_User_ID }}"
+      },
+      "id": "discord-kick",
+      "name": "Discord: Kick User",
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 1,
+      "position": [
+        700,
+        300
+      ],
+      "notesInFlow": true,
+      "notes": "Kick user khỏi server"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1087011655032-fitbmjndd573dqnlk47ot6idrrv07ttf.apps.googleusercontent.com",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Status": "KICKED"
+          }
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Discord_User_ID",
+              "lookupValue": "={{ $json.Discord_User_ID }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "google-sheets-mark-kicked",
+      "name": "Google Sheets: Mark KICKED",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        900,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets: Get Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets: Get Rows": {
+      "main": [
+        [
+          {
+            "node": "Filter Overdue (3 days)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Overdue (3 days)": {
+      "main": [
+        [
+          {
+            "node": "Discord: Kick User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Discord: Kick User": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets: Mark KICKED",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "id": "discord-payos-scheduler-1788958162097"
+}
