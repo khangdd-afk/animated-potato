@@ -1,0 +1,66 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "interval": 1
+            }
+          ]
+        }
+      },
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [ 180, 240 ],
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "url": "http://127.0.0.1:5000/api/price",
+        "options": {}
+      },
+      "name": "Lấy giá API",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [ 400, 240 ],
+      "typeVersion": 4.1
+    },
+    {
+      "parameters": {
+        "authentication": "webhook",
+        "webhookUri": "URL_WEBHOOK_DISCORD_CỦA_BẠN_Ở_ĐÂY",
+        "text": "=🔔 **Cập nhật giá {{$json.data.product}}**\n- Giá hiện tại: **{{$json.data.price_text}}**\n- Link: {{$json.data.url}}",
+        "options": {}
+      },
+      "name": "Gửi Discord",
+      "type": "n8n-nodes-base.discord",
+      "position": [ 620, 240 ],
+      "typeVersion": 2
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Lấy giá API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lấy giá API": {
+      "main": [
+        [
+          {
+            "node": "Gửi Discord",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

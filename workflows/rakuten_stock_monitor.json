@@ -1,0 +1,93 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "interval": 5
+            }
+          ]
+        }
+      },
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [ 100, 300 ],
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "url": "http://127.0.0.1:5000/api/price",
+        "options": {}
+      },
+      "name": "Lấy trạng thái API",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [ 300, 300 ],
+      "typeVersion": 4.1
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.data.in_stock}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "name": "Kiểm tra Còn hàng?",
+      "type": "n8n-nodes-base.if",
+      "position": [ 520, 300 ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "authentication": "webhook",
+        "webhookUri": "URL_WEBHOOK_DISCORD_CỦA_BẠN_Ở_ĐÂY",
+        "text": "=🎉 **CÓ HÀNG RỒI!!!**\n- Trạng thái: **Đang có hàng**\n- Giá: {{$json.data.price_text}}\n- Link đặt ngay: {{$json.data.url}}",
+        "options": {}
+      },
+      "name": "Gửi Discord",
+      "type": "n8n-nodes-base.discord",
+      "position": [ 740, 180 ],
+      "typeVersion": 2
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Lấy trạng thái API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lấy trạng thái API": {
+      "main": [
+        [
+          {
+            "node": "Kiểm tra Còn hàng?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kiểm tra Còn hàng?": {
+      "main": [
+        [
+          {
+            "node": "Gửi Discord",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

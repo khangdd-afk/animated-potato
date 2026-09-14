@@ -1,0 +1,13 @@
+{
+  "n8n_webhook_url": "https://your-n8n-instance.example.com/webhook/website-change",
+  "discord_webhook_url": "",
+  "check_interval_seconds": 300,
+  "run_once": false,
+  "sites": [
+    {
+      "name": "Tên trang (hiển thị trong thông báo)",
+      "url": "https://vidu.com",
+      "selector": null
+    }
+  ]
+}

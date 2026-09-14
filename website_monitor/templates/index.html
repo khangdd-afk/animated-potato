@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Website Monitor Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --danger: #ef4444;
+            --danger-hover: #dc2626;
+            --success: #10b981;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+        }
+        
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+            background-image: 
+                radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
+                radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%), 
+                radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%);
+            background-attachment: fixed;
+        }
+
+        h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(to right, #38bdf8, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+        }
+        
+        p.subtitle {
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+            text-align: center;
+        }
+
+        .controls {
+            margin-bottom: 2rem;
+            display: flex;
+            gap: 1rem;
+        }
+
+        .btn-add {
+            background-color: var(--success);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 14px 0 rgba(16, 185, 129, 0.39);
+            transition: all 0.2s;
+        }
+        .btn-add:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.1);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.5rem;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 0.5rem;
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 80%;
+        }
+
+        .btn-del {
+            background: transparent;
+            border: none;
+            color: var(--danger);
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: transform 0.2s;
+        }
+        .btn-del:hover {
+            transform: scale(1.2);
+        }
+
+        .card-body {
+            flex-grow: 1;
+            margin-bottom: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.95rem;
+        }
+        .info-label {
+            color: var(--text-muted);
+        }
+        .info-val {
+            font-weight: 600;
+        }
+        
+        .stock-yes { color: var(--success); }
+        .stock-no { color: var(--danger); }
+        .stock-unknown { color: var(--text-muted); }
+
+        .actions {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        button.action-btn {
+            flex: 1;
+            padding: 0.75rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-toggle-on {
+            background-color: var(--danger);
+            color: white;
+            box-shadow: 0 4px 14px 0 rgba(239, 68, 68, 0.39);
+        }
+        .btn-toggle-off {
+            background-color: var(--accent);
+            color: white;
+            box-shadow: 0 4px 14px 0 rgba(59, 130, 246, 0.39);
+        }
+        .btn-refresh {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            flex: 0.5;
+        }
+
+        .action-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            filter: brightness(1.1);
+        }
+
+        .url-link {
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 0.8rem;
+            margin-top: 0.5rem;
+            display: block;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+        .modal {
+            background: #1e293b;
+            padding: 2rem;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 400px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .modal h2 { margin-bottom: 1.5rem; }
+        .input-group { margin-bottom: 1rem; display: flex; flex-direction: column; gap: 0.5rem;}
+        .input-group label { font-size: 0.9rem; color: var(--text-muted); }
+        .input-group input {
+            padding: 0.75rem;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(0,0,0,0.2);
+            color: white;
+            outline: none;
+            font-family: inherit;
+        }
+        .input-group input:focus { border-color: var(--accent); }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1.5rem; }
+        .btn-cancel { background: transparent; color: white; border: none; cursor: pointer; }
+        .btn-submit { background: var(--accent); color: white; border: none; padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <h1>Web Monitor Pro</h1>
+    <p class="subtitle">Quản lý Theo dõi Giá & Kho hàng Trực tiếp</p>
+
+    <div class="controls">
+        <button class="btn-add" onclick="showModal()">+ Thêm Trang Web Mới</button>
+    </div>
+
+    <div class="grid" id="app-grid">
+        <!-- Cards generated by JS -->
+    </div>
+
+    <!-- Modal Form -->
+    <div class="modal-overlay" id="addModal">
+        <div class="modal">
+            <h2>Thêm Website</h2>
+            <div class="input-group">
+                <label>Tên Gợi Nhớ (Ví dụ: iPhone 17)</label>
+                <input type="text" id="siteName" placeholder="Tên sản phẩm">
+            </div>
+            <div class="input-group">
+                <label>Đường link URL</label>
+                <input type="url" id="siteUrl" placeholder="https://...">
+            </div>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="hideModal()">Hủy</button>
+                <button class="btn-submit" onclick="addSite()">Thêm</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const grid = document.getElementById('app-grid');
+
+        function renderStock(inStock) {
+            if (inStock === true) return '<span class="stock-yes">CÓ HÀNG</span>';
+            if (inStock === false) return '<span class="stock-no">HẾT HÀNG</span>';
+            return '<span class="stock-unknown">Đang chờ cập nhật...</span>';
+        }
+
+        async function fetchSites() {
+            try {
+                const res = await fetch('/api/sites');
+                const sites = await res.json();
+                grid.innerHTML = '';
+
+                sites.forEach(site => {
+                    const resData = site.last_result || {};
+                    const price = resData.price_text || "---";
+                    const stock = renderStock(resData.in_stock);
+                    const lastCheck = resData.last_checked || "Chưa quét";
+                    
+                    const btnClass = site.active ? 'btn-toggle-on' : 'btn-toggle-off';
+                    const btnText = site.active ? '■ Dừng theo dõi' : '▶ Bắt đầu theo dõi';
+
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    card.innerHTML = `
+                        <div class="card-header">
+                            <div class="card-title" title="${site.name}">${site.name}</div>
+                            <button class="btn-del" onclick="deleteSite('${site.id}')">×</button>
+                        </div>
+                        <div class="card-body">
+                            <div class="info-row">
+                                <span class="info-label">Tình trạng:</span>
+                                <span class="info-val">${stock}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Giá:</span>
+                                <span class="info-val">${price}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Cập nhật:</span>
+                                <span class="info-val" style="font-size:0.8rem">${lastCheck}</span>
+                            </div>
+                            <a href="${site.url}" target="_blank" class="url-link">${site.url}</a>
+                        </div>
+                        <div class="actions">
+                            <button class="action-btn btn-refresh" onclick="forceCheck('${site.id}')">↻ Quét ngay</button>
+                            <button class="action-btn ${btnClass}" onclick="toggleSite('${site.id}')">${btnText}</button>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+            } catch (e) {
+                console.error("Failed to fetch sites", e);
+            }
+        }
+
+        async function toggleSite(id) {
+            await fetch(`/api/sites/${id}/toggle`, { method: 'POST' });
+            fetchSites();
+        }
+
+        async function forceCheck(id) {
+            await fetch(`/api/sites/${id}/check`, { method: 'POST' });
+            fetchSites();
+        }
+
+        async function deleteSite(id) {
+            if(confirm("Xóa trang web này?")) {
+                await fetch(`/api/sites/${id}`, { method: 'DELETE' });
+                fetchSites();
+            }
+        }
+
+        async function addSite() {
+            const name = document.getElementById('siteName').value;
+            const url = document.getElementById('siteUrl').value;
+            if(!name || !url) return alert("Vui lòng điền đủ tên và link");
+            
+            await fetch('/api/sites', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, url })
+            });
+            hideModal();
+            fetchSites();
+        }
+
+        function showModal() {
+            document.getElementById('addModal').style.display = 'flex';
+            document.getElementById('siteName').value = '';
+            document.getElementById('siteUrl').value = '';
+        }
+        function hideModal() { document.getElementById('addModal').style.display = 'none'; }
+
+        // Cập nhật định kỳ
+        fetchSites();
+        setInterval(fetchSites, 5000);
+    </script>
+</body>
+</html>
