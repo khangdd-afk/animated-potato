@@ -3,7 +3,7 @@
         "id": "1789392928",
         "name": "新価格【新品・数量限定お一人様1セット限り】switch2 本体 スターターセットD ( ぽこあポケモン ソフト&周辺機器付き)",
         "url": "https://item.rakuten.co.jp/sendaihawks/026434301/?l-id=shoptop_widget_featured_items",
-        "active": true,
+        "active": false,
         "last_result": {
             "status": "success",
             "price_number": null,
@@ -16,7 +16,7 @@
         "id": "1789393201",
         "name": "sendaihawks",
         "url": "https://item.rakuten.co.jp/sendaihawks/167961015/",
-        "active": true,
+        "active": false,
         "last_result": null
     }
 ]
