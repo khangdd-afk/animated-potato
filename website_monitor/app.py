@@ -1,5 +1,7 @@
 import json
 import os
+from dotenv import load_dotenv
+load_dotenv()
 import time
 import threading
 import requests
@@ -10,7 +12,7 @@ from flask import Flask, render_template, jsonify, request
 app = Flask(__name__)
 
 SITES_FILE = "sites.json"
-DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1549049688626561134/bngjNpIqPwXblmczH4163zi9QTuC1f4KE7RwnGCx96WnAtFimZEirELHJx1PyCUOZr9u"  # Có thể cho sửa từ UI sau
+DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
 
 def load_sites():
     if os.path.exists(SITES_FILE):

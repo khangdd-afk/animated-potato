@@ -1,8 +1,10 @@
 import requests
 import time
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
-# HÃY DÁN ĐƯỜNG LINK WEBHOOK DISCORD CỦA BẠN VÀO ĐÂY
-DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1549049688626561134/bngjNpIqPwXblmczH4163zi9QTuC1f4KE7RwnGCx96WnAtFimZEirELHJx1PyCUOZr9u"
+DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
 
 def check_and_notify():
     url = "https://item.rakuten.co.jp/sendaihawks/167961015/"

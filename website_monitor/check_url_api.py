@@ -1,8 +1,10 @@
 from flask import Flask, jsonify, request
 import requests
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
-# HÃY DÁN LINK DISCORD WEBHOOK CỦA BẠN VÀO ĐÂY
-DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1549049688626561134/bngjNpIqPwXblmczH4163zi9QTuC1f4KE7RwnGCx96WnAtFimZEirELHJx1PyCUOZr9u"
+DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
 
 app = Flask(__name__)
 
